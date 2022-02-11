@@ -1,0 +1,16 @@
+{
+  "name": "controller_lib",
+  "version": "1.0.0",
+  "package": "controller_lib",
+  "devDependencies": {
+    "@napi-rs/cli": "^1.0.0"
+  },
+  "napi": {
+    "name": "controller"
+  },
+  "scripts": {
+    "install": "npm run build",
+    "build": "napi build --release",
+    "build:debug": "napi build"
+  }
+}
