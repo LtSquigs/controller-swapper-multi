@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BizHawk Multiplayer Swapper</title>
+    <title>Controller Multiplayer Swapper</title>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
     <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
@@ -35,14 +35,19 @@
         align-items: center;
       }
 
+      .vigm-error-modal {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
       .main-view .form-row span {
         display: flex;
         align-items: center;
       }
 
       .main-view .user-list {
-        height: 150px;
-        overflow-y: scroll;
         overflow-x: hidden;
       }
 
@@ -52,7 +57,7 @@
         overflow-x: hidden;
       }
 
-      .main-view .bizhawk-controls {
+      .main-view .swap-controls {
         width: 100%;
         display: flex;
         align-items: center;
@@ -62,6 +67,10 @@
 
       .spaces {
         white-space: pre;
+      }
+
+      .main-view .controller-settings input {
+        cursor: pointer;
       }
     </style>
 </head>

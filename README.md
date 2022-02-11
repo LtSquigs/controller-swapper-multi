@@ -1,3 +1,7 @@
+
+    //"electron": "10.1.5",
+    //"electron-builder": "^22.9.1",
+    
 # bizhawk-swapper-multi
 
 Based off Brossentia's shuffle script, but built for Multiplayer co-op

@@ -1,5 +1,6 @@
 import { Settings } from './Settings.js';
 import { Actions } from './Actions.js';
+import { ControllerManager } from './ControllerManager.js';
 
 export class State {
   static state = {};
@@ -8,18 +9,15 @@ export class State {
 
   static initialize() {
     State.state = {
+      controllerDeadzone: 0.07,
+      connectedControllers: [],
+      controllerMapping: {},
+      forwardedController: null,
       hostClientError: null,
       clientConnected: false,
       clientIsConnecting: false,
-      bizhawkConnected: false,
-      bizhawkDir: null,
-      bizhawkDirError: null,
-      bizhawkTimeout: 3 * 1000,
-      bizhawkMaxRetries: 2,
-      everyoneSwaps: true,
       enableCountdown: true,
       lastSwap: 0,
-      loadLastKnownSaves: true,
       isHost: false,
       isRunning: false,
       isSwapping: false,
@@ -27,44 +25,38 @@ export class State {
       serverRunning: false,
       username: "",
       users: {},
+      userLatency: {},
       minSwapTime: 0,
       maxSwapTime: 0,
-      roms: [],
-      automaticSwapping: true,
       settingsPage: 'main',
-      twitchAuthorized: false,
-      twitchEnabled: false,
-      twitchBitsEnabled: false,
-      twitchChannelRewardsEnabled: false,
-      twitchBitsThreshold: 1000,
-      twitchChannelRewardTrigger: {},
-      twitchCooldown: 30,
-      twitchChannelRewards: [],
-      twitchBankEnabled: false,
-      twitchBankCount: 0
+      vigmError: null,
+      mode: 'random',
     }
 
     Settings.initialize();
 
-    State.state.bizhawkDir = Settings.getSetting("bizhawkDir");
+    State.state.controllerDeadzone = Settings.getSetting("controllerDeadzone");
+    State.state.forwardedController = Settings.getSetting("forwardedController");
+    State.state.controllerMapping = Settings.getSetting("controllerMapping");
     State.state.username = Settings.getSetting("username");
     State.state.serverAddress = Settings.getSetting("serverAddress");
-    State.state.everyoneSwaps = Settings.getSetting("everyoneSwaps");
     State.state.enableCountdown = Settings.getSetting("countdown");
     State.state.minSwapTime = Settings.getSetting("minTime");
     State.state.maxSwapTime = Settings.getSetting("maxTime");
-    State.state.loadLastKnownSaves = Settings.getSetting("loadLastKnownSaves");
-    State.state.automaticSwapping = Settings.getSetting("automaticSwapping");
-    State.state.twitchEnabled = Settings.getSetting("twitchEnabled");
-    State.state.twitchBitsEnabled = Settings.getSetting("twitchBitsEnabled");
-    State.state.twitchChannelRewardsEnabled = Settings.getSetting("twitchChannelRewardsEnabled");
-    State.state.twitchBitsThreshold = Settings.getSetting("twitchBitsThreshold");
-    State.state.twitchChannelRewardTrigger = Settings.getSetting("twitchChannelRewardTrigger");
-    State.state.twitchCooldown = Settings.getSetting("twitchCooldown");
-    State.state.twitchBankEnabled = Settings.getSetting("twitchBankEnabled");
+    State.state.forwardedController = Settings.getSetting("forwardedController");
+    State.state.mode = Settings.getSetting("mode");
 
-    // Change flag of twitchAuthorized based off settings
-    Actions.updateTwitchToken(Settings.getSetting("twitchAccessToken"), true);
+    Actions.createGamepadListener((gamepad) => {
+      // If this gamepad is set as the currently forwarded controller than update the Controller manager to use it
+      if(gamepad.id == State.state.forwardedController) {
+        ControllerManager.setForwardedController(gamepad);
+      }
+      State.state.connectedControllers.push(gamepad);
+      State.setState("connectedControllers", State.state.connectedControllers);
+    }, (gamepad) => {
+      const filteredControllers = State.state.connectedControllers.filter((pad) => pad.index !== gamepad.index);
+      State.setState("connectedControllers", filteredControllers);
+    });
 
     return State.state;
   }

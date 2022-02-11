@@ -1,14 +1,11 @@
 import { State } from './State.js';
 import { Settings } from './Settings.js';
-import { BizhawkApi } from './BizhawkApi.js';
 import { WebsocketClient } from './WebsocketClient.js';
 import { CoordinationServer } from './CoordinationServer.js'
+import { ControllerManager } from './ControllerManager.js';
 import { Runner } from './Runner.js';
-import { Twitch } from './Twitch.js';
 
 export class Actions {
-  static lastTwitchSwap = 0;
-
   static setUsername(username) {
     Settings.setSetting("username", username);
     State.setState("username", username);
@@ -20,20 +17,23 @@ export class Actions {
   }
 
   static startServer() {
-    CoordinationServer.startServer(() => {
-      State.setState("isHost", true);
-      State.setState("serverRunning", true);
-      BizhawkApi.start();
-    }, () => {
-      State.setState("isHost", false);
-      State.setState("serverRunning", false);
-      BizhawkApi.stop();
-    }, (error) => {
-      State.setState("isHost", false);
-      State.setState("serverRunning", false);
-      State.setState("hostClientError", error);
-      BizhawkApi.stop();
-    })
+    const virtualError = ControllerManager.createVirtualController();
+
+    if (virtualError) {
+      State.setState("vigmError", virtualError)
+    } else {
+      CoordinationServer.startServer(() => {
+        State.setState("isHost", true);
+        State.setState("serverRunning", true);
+      }, () => {
+        State.setState("isHost", false);
+        State.setState("serverRunning", false);
+      }, (error) => {
+        State.setState("isHost", false);
+        State.setState("serverRunning", false);
+        State.setState("hostClientError", error);
+      })
+    }
   }
 
   static connectToHost() {
@@ -43,70 +43,21 @@ export class Actions {
     () => {
       State.setState("clientIsConnecting", false);
       State.setState("clientConnected", true);
-      BizhawkApi.start();
     }, () => {
       State.setState("clientIsConnecting", false);
       State.setState("clientConnected", false);
-      BizhawkApi.stop();
     }, (error) => {
       State.setState("clientIsConnecting", false);
       State.setState("clientConnected", false);
       State.setState("hostClientError", error);
-      BizhawkApi.stop();
     });
   }
 
   static updateIsRunning(running) {
     State.setState("isRunning", running);
-
-    if (running && State.getState('twitchEnabled')) {
-      Actions.startTwitch();
-    }
-  }
-
-  static updateRom(name, selected) {
-    let roms = State.getState("roms");
-
-    roms = roms.map((romInfo) => {
-      if (romInfo.name == name) {
-        romInfo.selected = selected;
-      }
-
-      return romInfo;
-    });
-
-    if (State.getState("isRunning")) {
-      if (selected == true) {
-        Runner.reviveGame(name);
-      } else {
-        Runner.killGame(name);
-      }
-    }
-
-    State.setState("roms", roms);
-  }
-
-  static setBizhawkPath(filePath) {
-    const { error } = BizhawkApi.isValidDirectory(filePath);
-
-    if (error) {
-      State.setState("bizhawkDirError", error);
-      return;
-    }
-
-    Settings.setSetting("bizhawkDir", filePath);
-    State.setState("bizhawkDir", filePath);
   }
 
   static updateMinTime(time) {
-    // If the minimum is small enough then also need to update the
-    // timeouts
-    if (time < (State.getState("bizhawkTimeout") * (State.getState("bizhawkMaxRetries") + 1))) {
-      State.setState("bizhawkMaxRetries", 2);
-    } else {
-      State.setState("bizhawkMaxRetries", 0);
-    }
-
     State.setState("minSwapTime", time);
     Settings.setSetting("minTime", time);
   }
@@ -115,20 +66,15 @@ export class Actions {
     State.setState("maxSwapTime", time);
     Settings.setSetting("maxTime", time);
   }
+  
+  static updateMode(value) {
+    State.setState("mode", value);
+    Settings.setSetting("mode", value);
 
-  static updateEveryoneSwaps(swaps) {
-    State.setState("everyoneSwaps", swaps);
-    Settings.setSetting("everyoneSwaps", swaps);
-  }
-
-  static updateAutomaticSwapping(swaps) {
-    State.setState("automaticSwapping", swaps);
-    Settings.setSetting("automaticSwapping", swaps);
-
-    if(swaps == false) {
-      Runner.clearTimeout()
-    } else {
+    if (mode === "random") {
       Runner.registerNextShuffle();
+    } else {
+      Runner.clearTimeout();
     }
   }
 
@@ -138,11 +84,6 @@ export class Actions {
     }
 
     Runner.shufflePlayers();
-  }
-
-  static updateLoadLastSaves(loadSaves) {
-    State.setState("loadLastKnownSaves", loadSaves);
-    Settings.setSetting("loadLastKnownSaves", loadSaves);
   }
 
   static updateCountdown(countdown) {
@@ -158,197 +99,83 @@ export class Actions {
     Runner.shufflePlayers();
   }
 
-  static launchBizhawk() {
-    BizhawkApi.open();
-  }
-
-  static runGames() {
+  static run() {
     Runner.run();
   }
 
+  static stop() {
+    Runner.stop();
+  }
+  
   static changeSettingsPage(page) {
     State.setState('settingsPage', page);
   }
 
-  static loginTwitch() {
-    Twitch.loginTwitch();
+  static createGamepadListener(onNewGamepad, onRemoveGamepad) {
+    ControllerManager.listenControllers(onNewGamepad, onRemoveGamepad);
   }
 
-  static logoutTwitch() {
-    State.setState("twitchAuthorized", false);
-    Settings.setSetting("twitchAccessToken", null);
-    State.setState("twitchChannelRewards", []);
-
-    Twitch.setAccessToken(null).then(() => {
-      Twitch.stop();
-    });
+  static captureControllerInput(callback) {
+    ControllerManager.getNextChangedInput(callback);
   }
 
-  static toggleEnableTwitch() {
-    if(State.getState('twitchEnabled')) {
-      State.setState('twitchEnabled', false);
-      Settings.setSetting('twitchEnabled', false);
+  static cancelCaptureControllerInput() {
+    ControllerManager.clearNextChangedInput();
+  }
 
-      Twitch.stop();
-    } else {
-      State.setState('twitchEnabled', true);
-      Settings.setSetting('twitchEnabled', true);
-
-      if (State.getState('isRunning')) {
-        Actions.startTwitch();
+  static updateControllerMapping(button, value) {
+    let newValue = {};
+    if (value.type == "button") {
+      newValue = {
+        type: "button",
+        index: value.id
+      }
+    } else if (value.type == "axis") {
+      newValue = {
+        type: "axis",
+        index: value.id,
+        sign: value.value < 0 ? -1 : 1
       }
     }
+
+    const curMapping = Settings.getSetting("controllerMapping");
+    curMapping[button] = newValue;
+
+    Settings.setSetting("controllerMapping", curMapping)
+    State.setState('controllerMapping', curMapping);
   }
 
-  static updateTwitchToken(token, first) {
-    Twitch.validateToken(token).then((results) => {
-      // If the token will expire within 4 days we just invalidate it
-      // so the user can re-authenticate
-      // Basically... I dont want to have to write a bunch of code
-      // checking to see if something is authenticated all the time, if a
-      // session lasts 4 days then i dont care
-      if (results.validated && results.json.expires_in > (60 * 60 * 24 * 4)) {
-        Twitch.setAccessToken(token).then(() => {
-          Settings.setSetting("twitchAccessToken", token);
-          State.setState("twitchAuthorized", true);
+  static updateForwardedController(controllerIndex) {
+    const connectedControllers = State.getState("connectedControllers");
 
-          Twitch.getChannelRewards().then((rewards) => {
-            State.setState("twitchChannelRewards", rewards);
-          });
-        });
-      } else {
-        Settings.setSetting("twitchAccessToken", null);
-        State.setState("twitchAuthorized", false);
-      }
-    });
-  }
+    let foundController = null;
 
-  static toggleChannelRewards() {
-    if(State.getState('twitchChannelRewardsEnabled')) {
-      State.setState('twitchChannelRewardsEnabled', false);
-      Settings.setSetting('twitchChannelRewardsEnabled', false);
-
-      Twitch.removeChannelListener();
+    if (controllerIndex == -1) {
+      foundController = null;
     } else {
-      State.setState('twitchChannelRewardsEnabled', true);
-      Settings.setSetting('twitchChannelRewardsEnabled', true);
-
-      Twitch.registerChannelListener();
-    }
-  }
-
-  static toggleBankEnabled() {
-    if(State.getState('twitchBankEnabled')) {
-      State.setState('twitchBankEnabled', false);
-      Settings.setSetting('twitchBankEnabled', false);
-    } else {
-      State.setState('twitchBankEnabled', true);
-      Settings.setSetting('twitchBankEnabled', true);
-    }
-  }
-
-  static clearBank() {
-    State.setState("twitchBankCount", 0)
-  }
-
-  static toggleTwitchBits() {
-    if(State.getState('twitchBitsEnabled')) {
-      State.setState('twitchBitsEnabled', false);
-      Settings.setSetting('twitchBitsEnabled', false);
-
-      Twitch.removeBitListener();
-    } else {
-      State.setState('twitchBitsEnabled', true);
-      Settings.setSetting('twitchBitsEnabled', true);
-
-      Twitch.registerBitListener();
-    }
-  }
-
-  static updateTwitchChannelRewardTrigger(reward) {
-    reward = reward || {};
-
-    State.setState("twitchChannelRewardTrigger", reward);
-    Settings.setSetting("twitchChannelRewardTrigger", reward);
-
-    Twitch.setChannelReward(reward);
-  }
-
-  static updateTwitchCooldown(cooldown) {
-    State.setState("twitchCooldown", cooldown);
-    Settings.setSetting("twitchCooldown", cooldown);
-  }
-
-  static updateBitThreshold(threshold) {
-    threshold = threshold || 1000;
-
-    State.setState("twitchBitsThreshold", threshold);
-    Settings.setSetting("twitchBitsThreshold", threshold);
-
-    Twitch.setBitThreshold(threshold);
-  }
-
-  static startTwitch() {
-    if (!State.getState("twitchChannelRewardTrigger").id &&
-        State.getState("twitchChannelRewards").length > 0) {
-      Actions.updateTwitchChannelRewardTrigger(State.getState("twitchChannelRewards")[0]);
-    }
-
-    Twitch.setChannelReward(State.getState("twitchChannelRewardTrigger"));
-    Twitch.setBitThreshold(State.getState("twitchBitsThreshold"))
-
-    Twitch.start(State.getState("twitchChannelRewardsEnabled"), State.getState('twitchBitsEnabled'));
-  }
-
-  static twitchSwap() {
-    // If we are already in the middle of a swap, we don't want to double up
-    if(State.getState("isSwapping")) {
-      if(State.getState('twitchBankEnabled')) {
-        State.setState("twitchBankCount", State.getState("twitchBankCount") + 1);
+      for(let controller of connectedControllers) {
+        if (controller.index == controllerIndex) {
+          foundController = controller;
+          break;
+        }
       }
-
-      return;
     }
 
-    const now = Date.now();
-    const lastSwap = State.getState("lastSwap");
+    // The controller manager we send the real controller to
+    ControllerManager.setForwardedController(foundController);
 
-    // We are within the cooldown period, ignore this swap
-    if ((now - lastSwap) < (State.getState("twitchCooldown") * 1000)) {
-      if(State.getState('twitchBankEnabled')) {
-        State.setState("twitchBankCount", State.getState("twitchBankCount") + 1);
-      }
+    // The State/Settings we want to update to just use the id
+    const id = foundController ? foundController.id : null;
 
-      return;
-    }
+    State.setState("forwardedController", id);
+    Settings.setSetting("forwardedController", id);
+  }
 
-    Runner.shufflePlayers();
+  static updateUserLatency(username, latency) {
+    const userLatency = State.getState("userLatency");
+
+    userLatency[username] = latency;
+
+    State.setState("userLatency", userLatency);
   }
 }
-
-// Interval to clear the bank
-setInterval(() => {
-  // Twitch isnt enable, bank isnt on or is empty
-  if(!State.getState('twitchEnabled') || !State.getState('twitchBankEnabled') || State.getState("twitchBankCount") <= 0) {
-    return;
-  }
-
-  const now = Date.now();
-  const lastSwap = State.getState("lastSwap");
-
-  // We are within the cooldown period, clear the bank later
-  if ((now - lastSwap) < (State.getState("twitchCooldown") * 1000)) {
-    return;
-  }
-
-  // Were currently swapping, dont swap
-  if (State.getState('isSwapping')) {
-    return;
-  }
-
-  // If we are running, do a swap and reduce the bank by 1
-  if(State.getState("isRunning")) {
-    Runner.shufflePlayers();
-    State.setState("twitchBankCount", State.getState("twitchBankCount") - 1);
-  }
-}, 500);

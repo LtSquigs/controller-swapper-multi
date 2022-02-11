@@ -1,9 +1,8 @@
 .DS_Store
-SwapRoms
 package-lock.json
 settings.json
-BizHawk
-Saves
+
+target
 
 # Logs
 logs
