@@ -6,7 +6,10 @@ let websocketServer = null;
 let websocketClient = null;
 
 contextBridge.exposeInMainWorld('controller_lib', controller_lib)
-contextBridge.exposeInMainWorld('ipcRenderer', ipcRenderer)
+contextBridge.exposeInMainWorld('onUpdateControllerStates', (callback) => {
+  ipcRenderer.on("new-controller-states", callback)
+})
+contextBridge.exposeInMainWorld('ipcRenderer', { ...ipcRenderer })
 contextBridge.exposeInMainWorld('nodeWS',{
   createWebsocketServer: (port) => {
     websocketServer = new ws.Server({

@@ -4,111 +4,111 @@ export class Settings {
   static settingUpdateHandlers = [];
   static settings = {
     controllerDeadzone: 0.07,
-    controllerMapping: {
-      start: {
-        type: 'button',
-        index: 9
-      }, // START
-      back:  {
-        type: 'button',
-        index: 8
-      }, // BACK
-      ls_press:  {
-        type: 'button',
-        index: 10
-      }, // LEFT_THUMB
-      rs_press:  {
-        type: 'button',
-        index: 11
-      }, //  RIGHT_THUMB
-      l_trigger:  {
-        type: 'button',
-        index: 5
-      }, // leftTrigger Analog on Xbox?
-      r_trigger:  {
-        type: 'button',
-        index: 7
-      }, // rightTrigger Analog on Xbox
-      l_bumper:  {
-        type: 'button',
-        index: 4
-      }, // LEFT_SHOULDER
-      r_bumper:  {
-        type: 'button',
-        index: 5
-      }, // RIGHT_SHOULDER
-      a:  {
-        type: 'button',
-        index: 0
-      }, // A
-      x:  {
-        type: 'button',
-        index: 2
-      },  // X
-      b:  {
-        type: 'button',
-        index: 1
-      }, // B
-      y:  {
-        type: 'button',
-        index: 3
-      }, // Y
-      ls_left:  {
-        type: 'axis',
-        index: 0,
-        sign: -1,
-      }, // leftX
-      ls_right:  {
-        type: 'axis',
-        index: 0,
-        sign: 1,
-      }, // leftX
-      ls_up: {
-        type: 'axis',
-        index: 1,
-        sign: -1,
-      }, // leftY
-      ls_down: {
-        type: 'axis',
-        index: 1,
-        sign: 1,
-      }, // leftY
-      rs_left: {
-        type: 'axis',
-        index: 2,
-        sign: -1,
-      }, // rightX
-      rs_right: {
-        type: 'axis',
-        index: 2,
-        sign: 1,
-      }, // rightX
-      rs_up: {
-        type: 'axis',
-        index: 3,
-        sign: -1,
-      }, // rightY
-      rs_down: {
-        type: 'axis',
-        index: 3,
-        sign: 1,
-      }, // rightY
-      d_left: {
-        type: 'button',
-        index: 14
-      }, // dpadHorz = Analog on Xbox?
-      d_right: {
-        type: 'button',
-        index: 15
-      }, // dpadHorz = Analog on Xbox?
-      d_up: {
-        type: 'button',
-        index: 12
-      }, // dpadVert = Analog on Xbox?
-      d_down: {
-        type: 'button',
-        index: 13
-      }, // dpadVert = Analog on Xbox?
+    "controllerMapping": {
+      "start": {
+        "type": "button",
+        "index": "start"
+      },
+      "back": {
+        "type": "button",
+        "index": "select"
+      },
+      "ls_press": {
+        "type": "button",
+        "index": "left_thumb"
+      },
+      "rs_press": {
+        "type": "button",
+        "index": "right_thumb"
+      },
+      "l_trigger": {
+        "type": "button",
+        "index": "left_trigger_2"
+      },
+      "r_trigger": {
+        "type": "button",
+        "index": "right_trigger_2"
+      },
+      "l_bumper": {
+        "type": "button",
+        "index": "left_trigger"
+      },
+      "r_bumper": {
+        "type": "button",
+        "index": "right_trigger"
+      },
+      "a": {
+        "type": "button",
+        "index": "south"
+      },
+      "x": {
+        "type": "button",
+        "index": "west"
+      },
+      "b": {
+        "type": "button",
+        "index": "east"
+      },
+      "y": {
+        "type": "button",
+        "index": "north"
+      },
+      "ls_left": {
+        "type": "axis",
+        "index": "left_stick_x",
+        "sign": -1
+      },
+      "ls_right": {
+        "type": "axis",
+        "index": "left_stick_x",
+        "sign": 1
+      },
+      "ls_up": {
+        "type": "axis",
+        "index": "left_stick_y",
+        "sign": 1
+      },
+      "ls_down": {
+        "type": "axis",
+        "index": "left_stick_y",
+        "sign": -1
+      },
+      "rs_left": {
+        "type": "axis",
+        "index": "right_stick_x",
+        "sign": -1
+      },
+      "rs_right": {
+        "type": "axis",
+        "index": "right_stick_x",
+        "sign": 1
+      },
+      "rs_up": {
+        "type": "axis",
+        "index": "right_stick_y",
+        "sign": 1
+      },
+      "rs_down": {
+        "type": "axis",
+        "index": "right_stick_y",
+        "sign": -1
+      },
+      "d_left": {
+        "type": "button",
+        "index": "d_pad_left"
+      },
+      "d_right": {
+        "type": "button",
+        "index": "d_pad_right"
+      },
+      "d_up": {
+        "type": "button",
+        "index": "d_pad_up"
+      },
+      "d_down": {
+        "type": "button",
+        "index": "d_pad_down"
+      }
     },
     // Things needed: Convert Analog to Digital Type buttons and vice versa
     // Split D-Pad from buttons (or axes) to d-pad axes, could be digital -> analog

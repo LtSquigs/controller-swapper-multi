@@ -106,6 +106,10 @@ export class Actions {
   static stop() {
     Runner.stop();
   }
+
+  static swapUser(username) {
+    Runner.updateCurrentPlayer(username);
+  }
   
   static changeSettingsPage(page) {
     State.setState('settingsPage', page);

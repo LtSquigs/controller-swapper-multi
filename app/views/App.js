@@ -37,6 +37,7 @@ class App extends Component {
       isHost=${this.state.isHost}
       isRunning=${this.state.isRunning}
       mode=${this.state.mode}
+      currentPlayer=${this.state.currentPlayer}
       controllerMapping=${this.state.controllerMapping}
       connectedControllers=${this.state.connectedControllers}
       enableCountdown=${this.state.enableCountdown}
@@ -44,6 +45,7 @@ class App extends Component {
       minSwapTime=${this.state.minSwapTime}
       maxSwapTime=${this.state.maxSwapTime}
       users=${this.state.users}
+      userControllerStates=${this.state.userControllerStates}
       userLatency=${this.state.userLatency}
       settingsPage=${this.state.settingsPage}
     />`;

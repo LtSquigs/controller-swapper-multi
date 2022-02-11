@@ -6,13 +6,44 @@ const cwd = process.env.PORTABLE_EXECUTABLE_DIR || app.getAppPath();
 const appPath = app.getAppPath();
 const controller_lib = require('controller_lib');
 
+const controllerStates = {};
+let win = null;
+
 controller_lib.startGamepadEngine((err, ...controllers) => {
-  console.log('here I am');
-  console.log(controllers);
+  // For all controllers in the state, we do this
+  for(let state of controllers) {
+    state.id = state.name + ': ' + state.gilrs_id;
+    state.index = state.gilrs_id;
+    controllerStates[state.gilrs_id] = state;
+  }
+
+  const idsToRemove = [];
+  // Then we remove any not in here
+  for(let id in controllerStates) {
+    let found = false;
+    for(let state of controllers) {
+      if (id == state.gilrs_id) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      idsToRemove.push(id);
+    }
+  }
+
+  for(let id of idsToRemove) {
+    delete controllerStates[id];
+  }
+  
+  if (win != null) {
+    win.webContents.send('new-controller-states', controllerStates);
+  }
 })
 
 function createWindow () {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 800,
     height: 600,
     resizable: true,
@@ -28,8 +59,10 @@ function createWindow () {
   win.loadFile('app/index.html');
 
   win.on('close', (e) => {
+    win = null;
     disconnectController();
   })
+    
 }
 
 let virtualClient = null;
@@ -44,6 +77,11 @@ function disconnectController() {
   virtualController = null;
   virtualClient = null;
 }
+
+ipcMain.on('get-controll-states', (event, arg) => {
+  event.returnValue = controllerStates;
+  return;
+})
 
 ipcMain.on('connect-controller', (event, arg) => {
   console.log('Connecting Virtual Client')
@@ -76,7 +114,6 @@ ipcMain.on('connect-controller', (event, arg) => {
   if (!controllerErr) {
     virtualController = controller;
     virtualController.updateMode = "manual";
-    console.log(controller);
     event.returnValue = { controller: { index: controller.userIndex  } }
     return;
   }
@@ -93,35 +130,53 @@ ipcMain.handle('timeout', async (event, ...args) => {
   return timeoutPromise;
 })
 
-ipcMain.on('ping', (event, arg) => {
-  console.log(Date.now() + " " + arg)
-});
-
 ipcMain.on('sync-controller', (event, arg) => {
-  console.log(Date.now() +  ' sync controller');
+  console.log('Updating controller start')
   if (!virtualController) {
     return;
   }
 
-  virtualController.button.START.setValue(arg.START);
-  virtualController.button.BACK.setValue(arg.BACK);
-  virtualController.button.LEFT_THUMB.setValue(arg.LEFT_THUMB);
-  virtualController.button.RIGHT_THUMB.setValue(arg.RIGHT_THUMB);
-  virtualController.button.LEFT_SHOULDER.setValue(arg.LEFT_SHOULDER);
-  virtualController.button.RIGHT_SHOULDER.setValue(arg.RIGHT_SHOULDER);
-  virtualController.button.A.setValue(arg.A);
-  virtualController.button.B.setValue(arg.B);
-  virtualController.button.X.setValue(arg.X);
-  virtualController.button.Y.setValue(arg.Y);
-  virtualController.axis.leftX.setValue(arg.leftX);
-  virtualController.axis.leftY.setValue(arg.leftY);
-  virtualController.axis.rightX.setValue(arg.rightX);
-  virtualController.axis.rightY.setValue(arg.rightY);
-  virtualController.axis.leftTrigger.setValue(arg.leftTrigger);
-  virtualController.axis.rightTrigger.setValue(arg.rightTrigger);
-  virtualController.axis.dpadHorz.setValue(arg.dpadHorz);
-  virtualController.axis.dpadVert.setValue(arg.dpadVert);
-  virtualController.update();
+  if (arg == null) {
+    virtualController.button.START.setValue(0);
+    virtualController.button.BACK.setValue(0);
+    virtualController.button.LEFT_THUMB.setValue(0);
+    virtualController.button.RIGHT_THUMB.setValue(0);
+    virtualController.button.LEFT_SHOULDER.setValue(0);
+    virtualController.button.RIGHT_SHOULDER.setValue(0);
+    virtualController.button.A.setValue(0);
+    virtualController.button.B.setValue(0);
+    virtualController.button.X.setValue(0);
+    virtualController.button.Y.setValue(0);
+    virtualController.axis.leftX.setValue(0);
+    virtualController.axis.leftY.setValue(0);
+    virtualController.axis.rightX.setValue(0);
+    virtualController.axis.rightY.setValue(0);
+    virtualController.axis.leftTrigger.setValue(0);
+    virtualController.axis.rightTrigger.setValue(0);
+    virtualController.axis.dpadHorz.setValue(0);
+    virtualController.axis.dpadVert.setValue(0);
+    virtualController.update();
+  } else {
+    virtualController.button.START.setValue(arg.START);
+    virtualController.button.BACK.setValue(arg.BACK);
+    virtualController.button.LEFT_THUMB.setValue(arg.LEFT_THUMB);
+    virtualController.button.RIGHT_THUMB.setValue(arg.RIGHT_THUMB);
+    virtualController.button.LEFT_SHOULDER.setValue(arg.LEFT_SHOULDER);
+    virtualController.button.RIGHT_SHOULDER.setValue(arg.RIGHT_SHOULDER);
+    virtualController.button.A.setValue(arg.A);
+    virtualController.button.B.setValue(arg.B);
+    virtualController.button.X.setValue(arg.X);
+    virtualController.button.Y.setValue(arg.Y);
+    virtualController.axis.leftX.setValue(arg.leftX);
+    virtualController.axis.leftY.setValue(arg.leftY);
+    virtualController.axis.rightX.setValue(arg.rightX);
+    virtualController.axis.rightY.setValue(arg.rightY);
+    virtualController.axis.leftTrigger.setValue(arg.leftTrigger);
+    virtualController.axis.rightTrigger.setValue(arg.rightTrigger);
+    virtualController.axis.dpadHorz.setValue(arg.dpadHorz);
+    virtualController.axis.dpadVert.setValue(arg.dpadVert);
+    virtualController.update();
+  }
 })
 
 ipcMain.on('disconnect-controller', (event, arg) => {

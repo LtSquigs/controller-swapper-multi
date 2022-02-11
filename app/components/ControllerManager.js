@@ -14,6 +14,7 @@ export class ControllerManager {
   static forwardedController = null;
   static forwardedControllerState = {};
 
+  static controllerStates = {};
   static userControllerState = null;
   static polling = false;
 
@@ -30,10 +31,8 @@ export class ControllerManager {
       } else {
         WebsocketClient.sendControllerState(null)
       }
-
-      ControllerManager.killPollingLoop();
     } else {
-      ControllerManager.startPollingLoop(controller);
+      ControllerManager.pollController();
     }
   }
 
@@ -62,14 +61,6 @@ export class ControllerManager {
     };
   }
 
-  static startPollingLoop(controller) {
-    ControllerManager.polling = true;
-    const timeoutPromise = ipcRenderer.invoke('timeout', 4);
-    timeoutPromise.then(() => {
-      ControllerManager.pollController(controller) 
-    })
-  }
-
   // Detects if the states have changed, and if so, returns the first item that has changed as an object
   // Two specical sentinel values are also sent: NEW_STATE if the state is new, and NO_STATE if the state is gone away
   static statesChanged(oldState, newState) {
@@ -80,34 +71,26 @@ export class ControllerManager {
       return NO_STATE;
     }
 
-    // If we have a different length of buttons, that likely means we are in a NEW_STATE scenario
-    if (newState.buttons.length > oldState.buttons.length) {
-      return NEW_STATE;
-    }
-
-    const deadZone = State.getState("controllerDeadzone");
-
-    for(let i = 0; i < newState.buttons.length; i++) {
-      if (newState.buttons[i].value != oldState.buttons[i].value) {
+    // May not need this anymore?
+    //const deadZone = State.getState("controllerDeadzone");
+    for(let key in newState.buttons) {
+      if (newState.buttons[key] != oldState.buttons[key]) {
         return {
-          id: i,
+          id: key,
           type: "button",
-          value: newState.buttons[i].value
+          value: newState.buttons[key]
         }
       }
     }
-   if (newState.axes.length > oldState.axes.length) {
-      return NEW_STATE;
-    }
 
-    for(let i = 0; i < newState.axes.length; i++) {
+    for(let key in newState.axis) {
       // For it to qualify as a change in the axis, we want the user to really have to press it in that direction
-      if (newState.axes[i] !== oldState.axes[i] && Math.abs(newState.axes[i]) > deadZone && Math.abs(newState.axes[i] - oldState.axes[i]) > 0.01) {
+      if (newState.axis[key] !== oldState.axis[key]) {
         // Should Implement a filter for how big of a change before its considered different. Maybe == deadzone?
         return {
-          id: i,
+          id: key,
           type: "axis",
-          value: newState.axes[i]
+          value: newState.axis[key]
         }
       }
     }
@@ -115,11 +98,18 @@ export class ControllerManager {
     return null;
   }
 
-  static pollController(oldController) {
-    // Chrome is insane and requires you to always get the full list of controllers every time for a live snapshot.
-    const controllers = navigator.getGamepads();
+  static pollController() {
+    if(ControllerManager.forwardedController === null) {
+      return;
+    }
+
+    const oldController = ControllerManager.forwardedController;
+
+    // Grab the newest controller data from our states
+    const controllers = ControllerManager.controllerStates;
     let foundController = null;
-    for(let controller of controllers) {
+    for(let key in controllers) {
+      const controller = controllers[key]
       if (controller && controller.index == oldController.index) {
         foundController = controller;
       }
@@ -127,43 +117,43 @@ export class ControllerManager {
     
     if (foundController == null) {
       ControllerManager.userControllerState = null;
+      if (State.getState("isHost")) {
+        Runner.updateControllerState(State.getState("username"), null)
+      } else {
+        WebsocketClient.sendControllerState(null)
+      }
     } else {
-      const changedItem = ControllerManager.statesChanged(ControllerManager.userControllerState, foundController);
-
-
-      if (changedItem != null) {
-        ControllerManager.userControllerState = {};
-        ControllerManager.userControllerState.buttons = foundController.buttons;
-        ControllerManager.userControllerState.axes = foundController.axes;
-  
-        if (changedItem == NO_STATE) {
-          if (State.getState("isHost")) {
-            Runner.updateControllerState(State.getState("username"), null)
-          } else {
-            WebsocketClient.sendControllerState(null)
-          }
-        } else {
-          const translatedState = ControllerManager.translateState(ControllerManager.userControllerState);
-
-          if (State.getState("isHost")) {
-            Runner.updateControllerState(State.getState("username"), translatedState)
-          } else {
-            WebsocketClient.sendControllerState(translatedState)
-          }
+      if (ControllerManager.nextChangedCallback != null) {
+        const changedItem = ControllerManager.statesChanged(ControllerManager.userControllerState, foundController);
+        if(changedItem !== null && changedItem !== NEW_STATE && changedItem !== NO_STATE && Math.abs(changedItem.value) > 0.5) {
+          ControllerManager.nextChangedCallback(changedItem);
+          ControllerManager.nextChangedCallback = null;
         }
       }
 
-      if (ControllerManager.nextChangedCallback != null && changedItem !== null && changedItem !== NEW_STATE && changedItem !== NO_STATE && Math.abs(changedItem.value) > 0.5) {
-        ControllerManager.nextChangedCallback(changedItem);
-        ControllerManager.nextChangedCallback = null;
-      }
-    }
+      //if (changedItem != null) {
+      ControllerManager.userControllerState = {};
+      ControllerManager.userControllerState.buttons = foundController.buttons;
+      ControllerManager.userControllerState.axis = foundController.axis;
 
-    if (ControllerManager.polling) {
-      const timeoutPromise = ipcRenderer.invoke('timeout', 4);
-      timeoutPromise.then(() => {
-        ControllerManager.pollController(oldController) 
-      })
+      // if (changedItem == NO_STATE) {
+      //   if (State.getState("isHost")) {
+      //     Runner.updateControllerState(State.getState("username"), null)
+      //   } else {
+      //     WebsocketClient.sendControllerState(null)
+      //   }
+      // } else {
+        
+      const translatedState = ControllerManager.translateState(ControllerManager.userControllerState);
+
+      if (State.getState("isHost")) {
+        Runner.updateControllerState(State.getState("username"), translatedState)
+      } else {
+        WebsocketClient.sendControllerState(translatedState)
+      }
+     // }
+      //}
+
     }
   }
 
@@ -182,13 +172,13 @@ export class ControllerManager {
       X: ControllerManager.translateToButton(state, mapping.x),
       Y: ControllerManager.translateToButton(state, mapping.y),
       leftX: ControllerManager.translateToAxis(state, mapping.ls_left, mapping.ls_right),
-      leftY: ControllerManager.translateToAxis(state, mapping.ls_up, mapping.ls_down),
+      leftY: ControllerManager.translateToAxis(state, mapping.ls_down, mapping.ls_up),
       rightX: ControllerManager.translateToAxis(state, mapping.rs_left, mapping.rs_right),
-      rightY: ControllerManager.translateToAxis(state, mapping.rs_up, mapping.rs_down),
+      rightY: ControllerManager.translateToAxis(state, mapping.rs_down, mapping.rs_up),
       leftTrigger: ControllerManager.translateToButton(state, mapping.l_trigger),
-      rightTrigger: ControllerManager.translateToButton(state, mapping.l_trigger),
+      rightTrigger: ControllerManager.translateToButton(state, mapping.r_trigger),
       dpadHorz: ControllerManager.translateToAxis(state, mapping.d_left, mapping.d_right),
-      dpadVert: ControllerManager.translateToAxis(state, mapping.d_up, mapping.d_down),
+      dpadVert: ControllerManager.translateToAxis(state, mapping.d_down, mapping.d_up),
     }
 
     return xboxState;
@@ -199,7 +189,7 @@ export class ControllerManager {
     const index = mapping.index;
 
     if (type === "button") {
-      const value = state.buttons[index].value;
+      const value = state.buttons[index];
 
       return value > 0 ? 1 : 0;
     } else if (type === "axis") {
@@ -217,34 +207,34 @@ export class ControllerManager {
     let positiveValue = 0;
 
     if (negativeMapping.type === "button") {
-      if (state.buttons[negativeMapping.index].value > 0) {
+      if (state.buttons[negativeMapping.index] > 0) {
         negativeValue = -1;
       } else {
         negativeValue = 0;
       }
     } else if (negativeMapping.type === "axis") {
       // Only record this value if the sign matches the mapping.
-      const axes = state.axes[negativeMapping.index]
-      if (negativeMapping.sign === -1 && axes < 0) {
-        negativeValue = state.axes[negativeMapping.index];
-      } else if (negativeMapping.sign === 1 && axes > 0) {
-        negativeValue = state.axes[negativeMapping.index] * -1;
+      const axis = state.axis[negativeMapping.index]
+      if (negativeMapping.sign === -1 && axis < 0) {
+        negativeValue = state.axis[negativeMapping.index];
+      } else if (negativeMapping.sign === 1 && axis > 0) {
+        negativeValue = state.axis[negativeMapping.index] * -1;
       }
     }
     
     if (positiveMapping.type === "button") {
-      if (state.buttons[positiveMapping.index].value > 0) {
-        positiveValue = -1;
+      if (state.buttons[positiveMapping.index] > 0) {
+        positiveValue = 1;
       } else {
         positiveValue = 0;
       }
     } else if (positiveMapping.type === "axis") {
       // Only record this value if the sign matches the mapping.
-      const axes = state.axes[positiveMapping.index]
-      if (positiveMapping.sign === -1 && axes < 0) {
-        positiveValue = state.axes[positiveMapping.index] * -1;
-      } else if (positiveMapping.sign === 1 && axes > 0) {
-        positiveValue = state.axes[positiveMapping.index];
+      const axis = state.axis[positiveMapping.index]
+      if (positiveMapping.sign === -1 && axis < 0) {
+        positiveValue = state.axis[positiveMapping.index] * -1;
+      } else if (positiveMapping.sign === 1 && axis > 0) {
+        positiveValue = state.axis[positiveMapping.index];
       }
     }
 
@@ -255,31 +245,50 @@ export class ControllerManager {
     }
   }
 
-  static killPollingLoop() {
-    ControllerManager.userControllerState = null;
-    ControllerManager.polling = false;
-  }
-
   static listenControllers(onNewGamepad, onRemoveGamepad) {
-    window.addEventListener("gamepadconnected", function(e) {
-        if (ControllerManager.virtualController && e.gamepad.index == ControllerManager.virtualController.index) {
-            return;
-        }
-
-        onNewGamepad(e.gamepad);
-    });
-
-    window.addEventListener("gamepaddisconnected", function(e) {
-        if (ControllerManager.virtualController && e.gamepad.index == ControllerManager.virtualController.index) {
-            return;
-        }
-
-        onRemoveGamepad(e.gamepad);
-    });
+    window.onUpdateControllerStates((event, controllers) => {
+      const oldState = ControllerManager.controllerStates;
+      for(let key in controllers) {
+        const gamepad = controllers[key];
+        if (!(key in oldState)) { // New controller in the mix
+          if (ControllerManager.virtualController && gamepad.gilrs_id == ControllerManager.virtualController.index) {
+            continue;
+          }
     
-    // Add event listeners for button and axis change
-    // If from forwardedController, use button mapping to map buttons/axis change to gamepads current state
-    // Call update gamepad state in self for host or in websocket client for client
+          onNewGamepad(gamepad);
+        }
+      }
+
+      for(let key in oldState) {
+        const gamepad = oldState[key];
+        if (!(key in controllers)) { // Controller was removed
+          if (ControllerManager.virtualController && gamepad.gilrs_id == ControllerManager.virtualController.index) {
+            continue;
+          }
+    
+          onRemoveGamepad(gamepad);
+        }
+      }
+      
+      ControllerManager.controllerStates = controllers;
+      
+      ControllerManager.pollController();
+      // Call update state function here
+    });
+
+    // For initial load we just add them all
+    const controllers = ipcRenderer.sendSync('get-controll-states', {})
+
+    for(let key in controllers) {
+      let gamepad = controllers[key];
+      if (ControllerManager.virtualController && gamepad.gilrs_id == ControllerManager.virtualController.index) {
+        continue;
+      }
+
+      onNewGamepad(gamepad);
+    }
+
+    ControllerManager.controllerStates = controllers;
   }
 
   static getNextChangedInput(callback) {

@@ -10,6 +10,9 @@ function randomNumber(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+const buttonKeys = ["START", "BACK", "LEFT_THUMB", "RIGHT_THUMB", "LEFT_SHOULDER", "RIGHT_SHOULDER", "A", "B", "X", "Y"];
+const axisKeys = ["leftX", "leftY", "rightX", "rightY", "leftTrigger", "rightTrigger", "dpadHorz", "dpadVert"];
+
 export class Runner {
 
   static currentPlayer = null;
@@ -20,6 +23,12 @@ export class Runner {
   static run() {
     Actions.updateIsRunning(true);
     Runner.clearTimeout();
+
+    // Only start Shuffling if mode is set to random
+    if(State.getState("mode") !== "random") {
+      return;
+    }
+
     Runner.shufflePlayers(true);
   }
 
@@ -37,7 +46,7 @@ export class Runner {
   static registerNextShuffle() {
     Runner.clearTimeout();
 
-    if(State.getState("mode") !== "random") {
+    if(State.getState("mode") !== "random" || !State.getState("isRunning")) {
       return;
     }
 
@@ -94,21 +103,64 @@ export class Runner {
     // From the controller state list, pick a random use who has a controller state as the new player
 
     Runner.currentPlayer = newPlayer;
+    State.setState('currentPlayer', newPlayer);
     
     State.setState('isSwapping', false);
   }
 
+  // In All For One Mode, any One person pressing a button presses it, and all analog values are just added together!
+  static allForOne() {
+    const totalState = {}
+    for(let key in buttonKeys) {
+      totalState[key] = 0;
+    }
+    for(let key in axisKeys) {
+      totalState[key] = 0;
+    }
+
+    for(let user in Runner.userControllerStates) {
+      if (Runner.userControllerStates[user] !== null) {
+        // If any one person is pressing a button, it is pressed
+        for(let key in buttonKeys) {
+          const val = Runner.userControllerStates[user][key] || 0;
+          if (val > 0) {
+            totalState[key] = 1;
+          }
+        }
+        
+        for(let key in axisKeys) {
+          const val = Runner.userControllerStates[user][key] || 0;
+          if (val > 0.07) { // For non Neutral Axis, we are going to average these, we only count past a deadzone though
+            totalState[key] += val;
+          }
+        }
+      }
+    }
+
+    for(let key in axisKeys) {
+      totalState[key] = Math.max(1, totalState[key]);
+      totalState[key] = Math.min(-1, totalState[key]);
+    }
+
+    return totalState;
+  }
+
   static updateControllerState(username, state) {
     Runner.userControllerStates[username] = state;
+    State.setState("userControllerStates", Runner.userControllerStates);
+
+    // If we arent running, don't go syncing waterfalls
+    if(!State.getState("isRunning")) {
+      return;
+    }
 
     if (State.getState("mode") === "random" && username === Runner.currentPlayer) {
       ipcRenderer.send('sync-controller', state)
-    } else if (State.getState("mode") === "consensus") {
-      // If in consensus mode do the consensus logic
     } else if (State.getState("mode") === "all") {
-      // If in all mode do the all logics
+      ipcRenderer.send('sync-controller', Runner.allForOne());
     }
   }
+  
 }
 
 window.Runner = Runner;
