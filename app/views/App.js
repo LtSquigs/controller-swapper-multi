@@ -25,6 +25,7 @@ class App extends Component {
     if (!this.state.serverRunning && !this.state.clientConnected) {
       return html`
         <${HostClientSelectionView}
+          canHost=${this.state.canHost}
           isConnecting=${this.state.clientIsConnecting}
           username=${this.state.username}
           serverAddress=${this.state.serverAddress}

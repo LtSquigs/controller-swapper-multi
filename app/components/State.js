@@ -36,6 +36,7 @@ export class State {
       mode: 'random',
       swapCountdown: 0,
       virtualController: null,
+      canHost: true,
     }
 
     Settings.initialize();
@@ -52,6 +53,7 @@ export class State {
     State.state.forwardedController = Settings.getSetting("forwardedController");
     State.state.mode = Settings.getSetting("mode");
     State.state.countdownDisplay = Settings.getSetting("countdownDisplay");
+    State.state.canHost = document.location.hash == '#nohost' ? false : true;
 
     Actions.createGamepadListener((gamepad) => {
       // If this gamepad is set as the currently forwarded controller than update the Controller manager to use it

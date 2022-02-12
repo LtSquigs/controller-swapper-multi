@@ -1,7 +1,15 @@
 const { app, BrowserWindow, ipcMain, session } = require('electron')
 const path = require('path');
 const fs = require('fs');
-const ViGEmClient = require('vigemclient');
+
+let ViGEmClient = null;
+
+try {
+  ViGEmClient = require('vigemclient'); 
+}
+catch (e) {
+}
+
 const cwd = process.env.PORTABLE_EXECUTABLE_DIR || app.getAppPath();
 const appPath = app.getAppPath();
 const controller_lib = require('controller_lib');
@@ -98,7 +106,7 @@ function createWindow () {
     }
   })
 
-  win.loadFile('app/index.html');
+  win.loadFile('app/index.html', { hash: ViGEmClient == null ? 'nohost' : '' });
 
   win.on('close', (e) => {
     if (countDownWindow !== null) {
@@ -293,6 +301,9 @@ ipcMain.on('get-controll-states', (event, arg) => {
 })
 
 ipcMain.on('connect-controller', (event, arg) => {
+  if (ViGEmClient == null) {
+    return;
+  }
   console.log('Connecting Virtual Controller')
   // Reuse virtual client across reconnects
   if (virtualClient == null) {

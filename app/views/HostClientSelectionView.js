@@ -44,7 +44,11 @@ export class HostClientSelectionView extends Component {
     return html`
       <div class="container-fluid host-client-modal">
         <div>
+        ${ this.props.canHost ? html`
           <p class="lead">Please enter a display name and select if you want to host or connect to a host.</p>
+        ` : html`
+          <p class="lead">Please enter a display name and server address to connect to.</p>
+        `}
         </div>
         <div class="form-group">
           <div class="form-group">
@@ -54,7 +58,9 @@ export class HostClientSelectionView extends Component {
             <input type="text" class="form-control" value=${this.props.serverAddress} onKeyUp=${this.changeServerAddress}></input>
           </div>
 
+          ${ this.props.canHost ? html`
           <button class="btn btn-primary mr-3 ml-3" onClick=${this.startHost} disabled=${!this.props.username}>Host</button>
+          ` : null }
           <button class="btn btn-primary mr-3 ml-3" onClick=${this.connectToHost} disabled=${!this.props.username || !this.props.serverAddress}>Connect</button>
         </div>
         <div>

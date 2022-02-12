@@ -104,8 +104,7 @@ struct GamepadState {
   axis: GamepadAxisState,
 }
 
-fn getGamepads() -> Vec<GamepadState> {
-  let gilrs = Gilrs::new().unwrap();
+fn getGamepads(gilrs: &Gilrs) -> Vec<GamepadState> {
   let mut vec = Vec::new();
 
   for (_id, gamepad) in gilrs.gamepads() {
@@ -197,7 +196,7 @@ fn startGamepadEngine(cb: JsFunction) -> Result<()> {
 
   thread::spawn(move || {
       let mut gilrs = Gilrs::new().unwrap();
-      let mut gamepads = getGamepads();
+      let mut gamepads = getGamepads(&gilrs);
       let delay = time::Duration::from_millis(4);
       
       tsfn.call(Ok(gamepads.clone()), ThreadsafeFunctionCallMode::Blocking);
@@ -253,7 +252,7 @@ fn startGamepadEngine(cb: JsFunction) -> Result<()> {
                 some_change = true;
               }
               Event { id, event: EventType::Connected, .. } => {
-                let newGamepads = getGamepads();
+                let newGamepads = getGamepads(&gilrs);
                 gamepads.retain(|gamepad| gamepad.gilrs_id != id);
                 for gamepad in newGamepads {
                   if gamepad.gilrs_id == id {
