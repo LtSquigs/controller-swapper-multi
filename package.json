@@ -9,13 +9,23 @@
     "win": {
       "target": "portable",
       "icon": "baseline_swap_horizontal_circle_black_48dp.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "icon": "icon.png",
+      "extendInfo": {
+        "LSUIElement": 1
+      }
     }
   },
   "postinstall": "electron-builder install-app-deps",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder -w"
+    "dist": "electron-builder -w",
+    "dist-mac": "electron-builder -m"
   },
   "author": "",
   "license": "ISC",
