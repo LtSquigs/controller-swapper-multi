@@ -57,7 +57,7 @@ Here are some tips for getting games to recognize the right controller:
 1. If a game allows you to choose a specific controller, great. The index of the XInput controller is shown in the Host players UI and can be used to try to figure out which controller is the virtual one.
 2. You can use online gamepad visualizers to try to identify the virtual controller. Set the mod to "All For One" and have a friend press buttons until you identify the controller.
 3. In windows you can configure a gamepad to be the "default" gamepad, if you can identify the gamepad in the windows gamepad configuration tools, you can try to set this to make certain games identify the virtual controller.
-4. In Steam Big Picture mode, you can re-order the order of the gamepads while playing a game by going into the steam overlay and changing the controller order. Can take a few tries to get right, but can be used on a vari
+4. In Steam Big Picture mode, you can re-order the order of the gamepads while playing a game by going into the steam overlay and changing the controller order. Can take a few tries to get right, but can be used on a variety of games.
 
 Some Caveats to Know: If the host has a local controller, that local controller will also be sending inputs at the same time as the virtual one when they are in control of it. That can make it annoying to identify the right controller, as well as make some things act weird (Steam Big Picture Mode e.g. is harder to navigate as it accepts all inputs from all controllers).
 
