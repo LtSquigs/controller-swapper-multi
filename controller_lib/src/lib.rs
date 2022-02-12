@@ -1,23 +1,17 @@
 #![allow(dead_code)]
-#![allow(unused_imports)]
 #![allow(non_snake_case)]
 
 #[macro_use]
 extern crate napi_derive;
-#[macro_use]
 extern crate napi;
-#[macro_use]
-extern crate lazy_static;
 
 extern crate uuid;
 extern crate gilrs;
 
 use napi::bindgen_prelude::*;
-use gilrs::{Gilrs, Button, Axis, Event, Gamepad, EventType, GamepadId};
+use gilrs::{Gilrs, Button, Axis, Event, EventType, GamepadId};
 use uuid::Uuid;
 
-use std::time::Duration;
-use std::sync::Mutex;
 use napi::threadsafe_function::{ThreadsafeFunction, ErrorStrategy, ThreadsafeFunctionCallMode, ThreadSafeCallContext};
 use std::{thread, time};
 
@@ -205,11 +199,10 @@ fn startGamepadEngine(cb: JsFunction) -> Result<()> {
       let mut gilrs = Gilrs::new().unwrap();
       let mut gamepads = getGamepads();
       let delay = time::Duration::from_millis(4);
-      let mut some_change = false;
-
+      
       tsfn.call(Ok(gamepads.clone()), ThreadsafeFunctionCallMode::Blocking);
       loop {
-        some_change = false;
+        let mut some_change = false;
         while let Some(event) = gilrs.next_event() {
           match event {
               Event { id, event: EventType::ButtonChanged(button, value, _code), .. } => {
@@ -277,7 +270,7 @@ fn startGamepadEngine(cb: JsFunction) -> Result<()> {
           };
         }
 
-        if (some_change) {
+        if some_change {
           tsfn.call(Ok(gamepads.clone()), ThreadsafeFunctionCallMode::Blocking);
         }
 

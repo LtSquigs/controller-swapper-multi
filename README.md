@@ -1,96 +1,75 @@
+# controller-swapper-multi
 
-    //"electron": "10.1.5",
-    //"electron-builder": "^22.9.1",
-    
-# bizhawk-swapper-multi
-
-Based off Brossentia's shuffle script, but built for Multiplayer co-op
-
-**Note: Even though this is built for multiplayer, it also works as a single player swapper.**
+**Note: For now this application is only supported on windows.**
 
 # What is This
 
-This tool lets you play any roms that BizHawk can run with your friends online, swapping who is playing which game randomly as you play them.
+This tool creates a virtual controller on the host machine its run on and allows players to connect to that controller over the internet, forwarding their inputs based off the input mode.
 
-e.g. Im playing Super Mario World, your playing Kirby. Now randomly Im playing Kirby where you just were, and your playing Super Mario World where I was.
+You can either have the system swap what player controls the controller randomly, manually swap players, or have the system accept all inputs from the players controllers.
 
 # How to Setup
 
-1. Download the Latest Release package from the [Release Page](https://github.com/LtSquigs/bizhawk-swapper-multi/releases)
-  - The release application comes with a working copy of BizHawk. If you want to use your own Copy of BizHawk, delete the BizHawk folder in the unzipped file. The application will ask you which BizHawk folder you want when you launch it.
-2. Add the ROM Files you want to be able to swap with friends into the SwapRoms folder
-  - Each person must have copies of the roms in their own SwapRoms folder, and they must have the same name
-3. Launch the Bizhawk Swapper exe
-4. You will be prompted if you want to be the Host or a Cient. The Host controls the settings and which games are run.
+1. Download the Latest Release package from the [Release Page](https://github.com/LtSquigs/controller-swapper-multi/releases)
+2. If you want to be the host, you need vigem installed. This may be installed already if you have parsec on your machine, if not you must download it [here](https://vigem.org/)
+3. Launch the Controller Swapper Executable
+4. You will be prompted if you want to be the Host or a Cient. The Host controls the settings and which player is playing.
 5. To host: Enter your Username and hit the Host Button.
-  - The host may have to forward port 45454 on your router to allow clients in
+  - The host may have to forward port 54545 on your router to allow clients in
 6. To connect as a Client: Enter your username and the hosts IP address and hit connect.
-  - Every client must have a different username or it all breaks
-7. You will launch into the settings page, here the hosts can change what settings they want and players can see the connection status of other players.
-8. Once ready to play, each player must hit the Launch BizHawk button. This will launch the BizHawk instance and connect it to the application.
-  - Do not close the LUA Script window that is opened with BizHawk
-9. This is your opportunity to configure BizHawk before the games are run, configure inputs etc.
-10. The Host must select which ROMs to play and swap.
-11. When all players are ready  the Host can hit the "Run Games" button to start the games running and swapping!
-  - If you have more or less games than the number of players, see the section below on rom swapping rules to know how it works
+  - Every client must have a different username or it all breaks!
+7. You will launch into the settings pag here the hosts can change what settings they want and players can see the connection status of other players.
+8. When all players are ready and settings confingured the Host can hit the "Start Forwarding" button to start forwarding inputs based off the current settings.
+  - When not Forwarding, the program will only forward the hosts selected controller, this is to make it easier to configure/test the controller in various applications.
 
 # Settings
 
 The settings on the settings page include:
 
-- Minimum Swap Time
-  - The minimum time before a swap can occure
-- Maximum Swap Time
-  - The maximum time before a swap must occur
-- Resume From Last Save
-  - If enabled, the swapper system will send the last known Save State for the games selected to the clients on initial load. Allowing you to resume playing over multiple sessions.
-- Everyone Swaps
-  - If enabled, all players swap together. If disabled, a random subset of players are swapped when a swap occurs.
-- Automatic swapping
-  - If turned off the automatic swapping will stop, can be turned off and on at any time to stop Swapping
-- Countdown
-  - If turned on a friendly 3, 2, 1 countdown will display on the emulator, same as the other swapper script.
+  - Main Tab
+    - Forwarded Controller: Which controller you want to forward to the system
+    - Show Countdown Window: Wether or not to show the countdown window. This is a transparent, always on top text that shows the countdown as it happens. Useful for knowing if a swap is coming up.
+    - Enable Moving Countdown: Normally all mouse events just pass through the countdown window, clicking this will give you the ability to move it where you want, just remember to unclick it when you have it where you need it to be.
+    - Show Player Window: Wether or not to show the countdown window. This is a transparent, always on top text that shows the current player that is forwarding controls to the controller.
+    - Enable Moving Player: Normally all mouse events just pass through the player window, clicking this will give you the ability to move it where you want, just remember to unclick it when you have it where you need it to be.
+    - User List: A list of users and their current status. Either "No Controller" for no controller selected for forwarding, "Ready" for ready to start sending controller inputs, and "Runner" for the currently selected player.
+      - The Host will also have a button here to "Change Player", which will mark that player as the current Runner
+  - Controller Mapping
+    - A tab to let you set the controller mapping if desired. Click on an input and press a button/move a stick to set it.
+  - Swap Settings (Host Only)
+    - Swapping Mode
+      - Random: Will randomly swap who is controlling the virtual controller within intervals set by the swap time parameters
+      - Manual: Will not do any special swap logic, allowing the host to manually swap players through the User List
+      - All For One: All players with connected controllers are sent to the forwarded controller. A button is considered pressed if at least one player is pressing it, and unpressed only if no players are pressing it. Analog values are all added together.
+    - Minimum Swap Time
+      - The minimum time before a swap can occure
+    - Maximum Swap Time
+      - The maximum time before a swap must occur
+    - Enabled Countdown
+      - If turned on there will be a 3 second countdown before the swap occurs and the countdown timer on the app will display the countdown to all players.
 
-You can also use the "Resume From Last Save" function to prepare a save state in advanced if you want to avoid the title screen/initial setup of a game.
-The system looks for saves with the name structure `<romFileName>.save` in the `Saves` directory.
+# Configuring The Virtual Controller In Games
 
-e.g. `Saves\Super Mario World.sfc.save` would be the last known save for the rom `Super Mario World.sfc`
+The virtual controller is an XInput controller, so most games should be able to support it, but getting a game to select the right virtual controller can be annoying and frustrating (many games do not let you chose the controller for each player and the names of all the x-input controllers default to "Xbox Controller").
 
-You can manually swap as well using the Manual Swap button, if automatic swapping is on this will reset the timer but not stop automatic swapping.
+Here are some tips for getting games to recognize the right controller:
 
-# Twitch Integration (Experimental)
+1. If a game allows you to choose a specific controller, great. The index of the XInput controller is shown in the Host players UI and can be used to try to figure out which controller is the virtual one.
+2. You can use online gamepad visualizers to try to identify the virtual controller. Set the mod to "All For One" and have a friend press buttons until you identify the controller.
+3. In windows you can configure a gamepad to be the "default" gamepad, if you can identify the gamepad in the windows gamepad configuration tools, you can try to set this to make certain games identify the virtual controller.
+4. In Steam Big Picture mode, you can re-order the order of the gamepads while playing a game by going into the steam overlay and changing the controller order. Can take a few tries to get right, but can be used on a vari
 
-The swapper has experimental support for swapping based off of Twitch Bit donations or Channel Point Reward Redemptions. (This is experimental as I do not have an affiliate/partner channel to test it with).
+Some Caveats to Know: If the host has a local controller, that local controller will also be sending inputs at the same time as the virtual one when they are in control of it. That can make it annoying to identify the right controller, as well as make some things act weird (Steam Big Picture Mode e.g. is harder to navigate as it accepts all inputs from all controllers).
 
-To enable it you can switch to the Twitch settings tab, authenticate against Twitch and change the settings to your requirements. (Note: Authentication may expire and need to be re-done).
+Similarly, if the players are connected to your machine with parsec with the virtual controllers in parsec enabled, they will also cause double inputs making it annoying to identify the right controller.
 
-The Twitch Integration has the following options:
+Anyways, those are about the best tips I can give you, just futz around with it until it seems like you picked up the right controller. If you set the system into "All For One" mode and hit the Start Forwarding button, all the players inputs will be forwarded, which can make it easier for you to distinguish between the right and wrong controllers.
 
-- Enable Twitch
-  - Turns off and on all the twitch features
-- Enable Channel Reward Triggering Swap
-  - If enabled, the selected Channel Reward will trigger a swap if redeemed while swapper is on
-- Enable Bit Donation Triggering Swap
-  - If enabled, any donations above the provided bit threshold will trigger a swap while the swapper is on
-- Cooldown
-  - Cooldown between twitch initiated swaps. If donations/reward redemptions happen within this time since the last swap (including non-twitch based swaps) they will either be ignored or banked depending on the bank setting. 
-- Bank Swaps During Cooldown
-  - If enabled, any donation/reward redemptions that trigger a swap during the cooldown period will be banked and executed after the cooldown is over.
-
-# Rom Swapping How It Works
-
-When the number of games = the # of players, every person swaps with eachother (unless "Everyone Swaps is unmarked, then some people can not swap").
-
-When you have more Games than the number of players, those games will be swapped in and out randomly.
-
-When you have less games than the number of players (as you mark games as done), than the person who most recently finished their game will be removed from the swap rotation.
-
-e.g. Person A and Person B are playing Game A and Game B respectively with Game C in reserve. If Game B is removed from the rotation, than rotation will continue with just Game A and B.
-
-However if Game C is then removed from the rotation, whoever had Game C last is removed from the rotation, and only the players with "live games" will continue to rotate.
+Wish I could give more advice, but the limitations of the gamepad and xinput apis in windows make this a nightmare!
 
 # TODO
 
 List of things that may eventually be added to this system:
 
-1. UI To display which player is playing which ROM
+1. Potentially port over Twitch integration from bizhawk swapper.
+2. Look at Mac OSX integration, theoretically possible with the rust library, but not with the vigem, might be a nightmare.

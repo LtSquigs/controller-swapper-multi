@@ -53,6 +53,7 @@ export class ControllerManager {
     let connectedControllers = State.getState("connectedControllers");
     connectedControllers = connectedControllers.filter((pad) => { return pad.index !== result.controller.index });
     State.setState("connectedControllers", connectedControllers);
+    State.setState("virtualController", ControllerManager.virtualController);
 
     // Register an event for deregistering this controller before the window unloads, seems to also work when the program is closed.
     window.onbeforeunload = function(event)
@@ -71,8 +72,6 @@ export class ControllerManager {
       return NO_STATE;
     }
 
-    // May not need this anymore?
-    //const deadZone = State.getState("controllerDeadzone");
     for(let key in newState.buttons) {
       if (newState.buttons[key] != oldState.buttons[key]) {
         return {
@@ -86,7 +85,6 @@ export class ControllerManager {
     for(let key in newState.axis) {
       // For it to qualify as a change in the axis, we want the user to really have to press it in that direction
       if (newState.axis[key] !== oldState.axis[key]) {
-        // Should Implement a filter for how big of a change before its considered different. Maybe == deadzone?
         return {
           id: key,
           type: "axis",
@@ -98,7 +96,7 @@ export class ControllerManager {
     return null;
   }
 
-  static pollController() {
+  static pollController(forceSend) {
     if(ControllerManager.forwardedController === null) {
       return;
     }
@@ -123,37 +121,28 @@ export class ControllerManager {
         WebsocketClient.sendControllerState(null)
       }
     } else {
-      if (ControllerManager.nextChangedCallback != null) {
-        const changedItem = ControllerManager.statesChanged(ControllerManager.userControllerState, foundController);
-        if(changedItem !== null && changedItem !== NEW_STATE && changedItem !== NO_STATE && Math.abs(changedItem.value) > 0.5) {
-          ControllerManager.nextChangedCallback(changedItem);
-          ControllerManager.nextChangedCallback = null;
+      const changedItem = ControllerManager.statesChanged(ControllerManager.userControllerState, foundController);
+      const userObj = State.getState("users")[State.getState("username")];
+      if (changedItem || (userObj && !userObj.hasController) || forceSend) {
+        if (ControllerManager.nextChangedCallback != null) {
+          if(changedItem !== null && changedItem !== NEW_STATE && changedItem !== NO_STATE && Math.abs(changedItem.value) > 0.5) {
+            ControllerManager.nextChangedCallback(changedItem);
+            ControllerManager.nextChangedCallback = null;
+          }
+        }
+
+        ControllerManager.userControllerState = {};
+        ControllerManager.userControllerState.buttons = foundController.buttons;
+        ControllerManager.userControllerState.axis = foundController.axis;
+
+        const translatedState = ControllerManager.translateState(ControllerManager.userControllerState);
+
+        if (State.getState("isHost")) {
+          Runner.updateControllerState(State.getState("username"), translatedState)
+        } else {
+          WebsocketClient.sendControllerState(translatedState)
         }
       }
-
-      //if (changedItem != null) {
-      ControllerManager.userControllerState = {};
-      ControllerManager.userControllerState.buttons = foundController.buttons;
-      ControllerManager.userControllerState.axis = foundController.axis;
-
-      // if (changedItem == NO_STATE) {
-      //   if (State.getState("isHost")) {
-      //     Runner.updateControllerState(State.getState("username"), null)
-      //   } else {
-      //     WebsocketClient.sendControllerState(null)
-      //   }
-      // } else {
-        
-      const translatedState = ControllerManager.translateState(ControllerManager.userControllerState);
-
-      if (State.getState("isHost")) {
-        Runner.updateControllerState(State.getState("username"), translatedState)
-      } else {
-        WebsocketClient.sendControllerState(translatedState)
-      }
-     // }
-      //}
-
     }
   }
 
@@ -271,9 +260,7 @@ export class ControllerManager {
       }
       
       ControllerManager.controllerStates = controllers;
-      
       ControllerManager.pollController();
-      // Call update state function here
     });
 
     // For initial load we just add them all
@@ -289,6 +276,7 @@ export class ControllerManager {
     }
 
     ControllerManager.controllerStates = controllers;
+    ControllerManager.pollController();
   }
 
   static getNextChangedInput(callback) {

@@ -54,6 +54,22 @@ export class MainView extends Component {
     Actions.updateCountdown(event.target.checked);
   }
 
+  updateCountdownWindow(event) {
+    Actions.updateCountdownWindow(event.target.checked);
+  }
+
+  updateMoveCountdownWindow(event) {
+    Actions.updateMoveCountdownWindow(event.target.checked);
+  }
+
+  updatePlayerWindow(event) {
+    Actions.updatePlayerWindow(event.target.checked);
+  }
+
+  updateMovePlayerWindow(event) {
+    Actions.updateMovePlayerWindow(event.target.checked);
+  }
+
   updateForwardedController(event) {
     Actions.updateForwardedController(event.target.value);
   }
@@ -108,12 +124,12 @@ export class MainView extends Component {
 
       userItems.push(html`
         <div class="row">
-          <div class="col-2">
+          <div class="col-4">
             ${
-              user.username == this.props.currentPlayer ? 
+              user.isSelected ? 
               html`<span class="badge badge-pill badge-success">Runner</span>` :
               (
-                this.props.userControllerStates[user.username] ? 
+                user.hasController ? 
                 html`<span class="badge badge-pill badge-primary">Ready</span>` : 
                 html`<span class="badge badge-pill badge-danger">No Controller</span>`
               )
@@ -122,13 +138,9 @@ export class MainView extends Component {
           <div class="col-4">
             <span>${user.username}</span>
           </div>
-          <div class="col-2">
-            ${this.props.userLatency[user.username] || '0' } ms
-          </div>
-          <div class="col-3">
-          ${ this.props.userControllerStates[user.username] && user.username !== this.props.currentPlayer ? 
-              html`<a href="#" disabled=${!this.props.isRunning} onClick=${this.changeUser(user.username)}>Force Swap</a>` : null }
-          </div>
+          ${ this.props.isHost && user.hasController && !user.isSelected ? 
+              html`<div class="col-4"><a href="#" disabled=${!this.props.isRunning} onClick=${this.changeUser(user.username)}>Change Player</a></div>` : null }
+          
         </div>
       `);
     }
@@ -153,6 +165,9 @@ export class MainView extends Component {
 
     return  html`
     <div class="controller-settings">
+      <small class="form-text text-muted">
+        To remap a button, click the input and press the button/move the analog stick to register the mapping.
+      </small>
       <div class="form-row">
         <div class="form-group col-3">
           <label>A Button</label>
@@ -304,19 +319,84 @@ export class MainView extends Component {
       return null;
     }
 
+
     return  html`
-    <div class="form-row">
-      <div class="form-group col-12">
-        <label>Forwarded Controller</label>
-        <select class="custom-select" required onChange=${this.updateForwardedController}>
-          <option value="-1">None</option>
-          ${ this.renderControllers() }
-        </select>
-        <small class="form-text text-muted">
-          Which controller to forward to the virtual controller. Choose None if you do not want to be in the rotation.
-        </small>
+      ${ this.props.virtualController ?  html`
+      <div class="row">
+        <div class="col-12">
+          Virtual XInput Controller #: ${this.props.virtualController.index}
+          <small class="form-text text-muted">
+            This is the XInput Controller # that the virtual controller is connected as, potentially useful for identifying the virtual controller in game settings.
+          </small>
+        </div>
       </div>
-    </div>
+      ` : null }
+      <div class="form-row">
+        <div class="form-group col-12">
+          <label>Forwarded Controller</label>
+          <select class="custom-select" required onChange=${this.updateForwardedController}>
+            <option value="-1">None</option>
+            ${ this.renderControllers() }
+          </select>
+          <small class="form-text text-muted">
+            Which controller to forward to the virtual controller. Choose None if you do not want to be in the rotation.
+          </small>
+          ${ this.props.virtualController ?  html`
+          <small class="form-text text-muted">
+            The virtual controller is automatically hidden from this dropdown.
+          </small>
+          ` : null }
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-12">
+          <div class="form-check-inline">
+            <input type="checkbox" class="form-check-input" checked=${this.props.countdownDisplay} onChange=${this.updateCountdownWindow}></input>
+            <label class="form-check-label">Show Countdown Window</label>
+          </div>
+          <div class="form-check-inline">
+            <input type="checkbox" class="form-check-input" checked=${this.props.moveCountdownWindow} onChange=${this.updateMoveCountdownWindow}></input>
+            <label class="form-check-label">Enable Moving Countdown</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-12">
+          <div class="form-check-inline">
+            <input type="checkbox" class="form-check-input" checked=${this.props.playerDisplay} onChange=${this.updatePlayerWindow}></input>
+            <label class="form-check-label">Show Player Window</label>
+          </div>
+          <div class="form-check-inline">
+            <input type="checkbox" class="form-check-input" checked=${this.props.movePlayerWindow} onChange=${this.updateMovePlayerWindow}></input>
+            <label class="form-check-label">Enable Moving Player</label>
+          </div>
+        </div>
+      </div>
+      ${ this.props.isHost ? html`
+      <div class="form-row pt-3">
+        <div class="swap-controls">
+          ${!this.props.isRunning ? html`<button class="btn btn-primary ml-2" onClick=${this.run}>Start Forwarding</button>` : null }
+          ${this.props.isRunning ? html`<button class="btn btn-danger ml-2" onClick=${this.stop}>Stop Forwarding</button>` : null }
+        </div>
+      </div>
+      ` : null }
+      <div class="pt-3">
+        <div>
+          <h3>User List</h3>
+          <div class="user-list">
+            ${ this.renderUsers() }
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  renderSwappingSettings() {
+    if(this.props.settingsPage !== 'swap' || !this.props.isHost) {
+      return null;
+    }
+
+    return  html`
       <div class="form-row">
         <div class="form-group col-12">
           <label>Swapping Mode</label>
@@ -340,23 +420,11 @@ export class MainView extends Component {
            <input type="number" class="form-control"  value=${this.props.maxSwapTime} onChange=${this.updateMaxTime} disabled=${!this.props.isHost}></input>
         </div>
       </div>
-      <div class="form-check-inline">
-        <input type="checkbox" class="form-check-input" checked=${this.props.enableCountdown} onChange=${this.updateCountdown} disabled=${!this.props.isHost}></input>
-        <label class="form-check-label">Enable Countdown</label>
-      </div>
-      <div class="form-row pt-3">
-        <div class="swap-controls">
-        <div>
-          ${!this.props.isRunning ? html`<button class="btn btn-primary ml-2" onClick=${this.run}>Start</button>` : null }
-          ${this.props.isRunning ? html`<button class="btn btn-danger ml-2" onClick=${this.stop}>Stop</button>` : null }
-        </div>
-        </div>
-      </div>
-      <div class="pt-3">
-        <div>
-          <h3>User List</h3>
-          <div class="user-list">
-            ${ this.renderUsers() }
+      <div class="form-row">
+        <div class="form-group col-12">
+          <div class="form-check-inline">
+            <input type="checkbox" class="form-check-input" checked=${this.props.enableCountdown} onChange=${this.updateCountdown}></input>
+            <label class="form-check-label">Enable Countdown</label>
           </div>
         </div>
       </div>
@@ -376,8 +444,13 @@ export class MainView extends Component {
               <li class="nav-item">
                 <a class=${"nav-link " + (this.props.settingsPage == 'controller' ? 'disabled' : '')} href="#" onClick=${this.changeSettingsPage('controller')}>Controller Mapping</a>
               </li>
+              ${ this.props.isHost ? 
+              html`<li class="nav-item">
+                    <a class=${"nav-link " + (this.props.settingsPage == 'swap' ? 'disabled' : '')} href="#" onClick=${this.changeSettingsPage('swap')}>Swap Settings</a>
+                  </li>` : null }
             </ul>
             ${ this.renderMainSettings() }
+            ${ this.renderSwappingSettings() }
             ${ this.renderControllerSettings() }
           </div>
         </div>

@@ -5,9 +5,14 @@ const controller_lib = require('controller_lib')
 let websocketServer = null;
 let websocketClient = null;
 
-contextBridge.exposeInMainWorld('controller_lib', controller_lib)
 contextBridge.exposeInMainWorld('onUpdateControllerStates', (callback) => {
   ipcRenderer.on("new-controller-states", callback)
+})
+contextBridge.exposeInMainWorld('onCountdownUpdate', (callback) => {
+  ipcRenderer.on("update-countdown", callback)
+})
+contextBridge.exposeInMainWorld('onCurrentPlayerUpdate', (callback) => {
+  ipcRenderer.on("update-player", callback)
 })
 contextBridge.exposeInMainWorld('ipcRenderer', { ...ipcRenderer })
 contextBridge.exposeInMainWorld('nodeWS',{

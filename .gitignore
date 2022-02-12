@@ -1,6 +1,7 @@
 .DS_Store
 package-lock.json
 settings.json
+window-pos.json
 
 target
 

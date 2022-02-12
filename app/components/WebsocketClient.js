@@ -1,5 +1,5 @@
+import { Actions } from './Actions.js';
 import { State } from './State.js';
-import { Settings } from './Settings.js';
 
 export class WebsocketClient {
   static client = null;
@@ -55,7 +55,7 @@ export class WebsocketClient {
           State.setState("users", {...message.users});
           break;
         case "start_countdown":
-          // TODO Implemetn real countdown
+          Actions.startCountdown();
           break;
 
       }

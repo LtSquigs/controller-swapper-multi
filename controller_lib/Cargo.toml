@@ -12,7 +12,6 @@ napi = {version = "2", features = ["napi8"]}
 napi-derive = {version = "2", features = ["type-def"]}
 uuid = "0.8"
 gilrs = "0.8.1"
-lazy_static = "1.4.0"
 
 [build-dependencies]
 napi-build = "1"

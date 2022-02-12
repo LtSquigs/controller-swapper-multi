@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <title>Countdown</title>
+    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <style>
+      .stroke {
+        text-shadow:
+          -1px -1px 0 #DCDCDC,
+          0   -1px 0 #DCDCDC,
+          1px -1px 0 #DCDCDC,
+          1px  0   0 #DCDCDC,
+          1px  1px 0 #DCDCDC,
+          0    1px 0 #DCDCDC,
+          -1px  1px 0 #DCDCDC,
+          -1px  0   0 #DCDCDC;
+        color: #202020;
+      }
+
+    </style>
+    <script>
+      window.onCountdownUpdate((event, arg) => {
+        document.querySelector('#countdown').innerHTML = 'Swap Countdown: ' + arg;
+      });
+    </script>
+  </head>  
+  <body style="-webkit-app-region: drag; background-color: transparent; overflow: hidden;">
+    <div class="row">
+      <div class="col-12">
+        <p id="countdown" class="h3 stroke">Swap Countdown: 0</p>
+      </div>
+    </div>
+  </body>
+</html>

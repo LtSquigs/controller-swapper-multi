@@ -8,6 +8,40 @@ const controller_lib = require('controller_lib');
 
 const controllerStates = {};
 let win = null;
+let countDownWindow = null;
+let playerDisplayWindow = null;
+
+
+function fixPath(pathToFix, local) {
+  if (!path.isAbsolute(pathToFix)) {
+    if(local) {
+      pathToFix = path.join(appPath, pathToFix);
+    } else {
+      pathToFix = path.join(cwd, pathToFix);
+    }
+  }
+
+  return pathToFix;
+}
+
+let windowPositions = {
+  main: { top: -1, left: -1, width: 500, height: 800 },
+  countDown: { top: -1, left: -1, width: 400, height: 100 },
+  player: { top: -1, left: -1, width: 400, height: 100 },
+}
+
+if(fs.existsSync(fixPath('window-pos.json', false))) {
+  const savedWindowPositions = JSON.parse(fs.readFileSync(fixPath('window-pos.json', false)));
+  windowPositions = {...windowPositions, ...savedWindowPositions};
+} 
+
+fs.writeFileSync(fixPath('window-pos.json', false), JSON.stringify(windowPositions));
+
+const saveWindowPosition = function(name, window) {
+  const bounds = window.getBounds();
+  windowPositions[name] = { top: bounds.y, left: bounds.x, width: bounds.width, height: bounds.height };
+  fs.writeFileSync(fixPath('window-pos.json', false), JSON.stringify(windowPositions));
+}
 
 controller_lib.startGamepadEngine((err, ...controllers) => {
   // For all controllers in the state, we do this
@@ -43,26 +77,51 @@ controller_lib.startGamepadEngine((err, ...controllers) => {
 })
 
 function createWindow () {
+  let posParams = {};
+  if (windowPositions.main.left !== -1 && windowPositions.main.top !== -1) {
+    posParams = {
+      x: windowPositions.main.left,
+      y: windowPositions.main.top,
+    }
+  }
   win = new BrowserWindow({
-    width: 800,
-    height: 600,
+    ...posParams,
+    width: windowPositions.main.width,
+    height: windowPositions.main.height,
     resizable: true,
     autoHideMenuBar: true,
     webPreferences: {
       backgroundThrottling: false,
       minimumFontSize : 12,
       defaultFontSize : 16,
-      preload: fixPath('preload.js'),
+      preload: path.join(__dirname, "preload.js") ,
     }
   })
 
   win.loadFile('app/index.html');
 
   win.on('close', (e) => {
+    if (countDownWindow !== null) {
+      countDownWindow.close();
+      countDownWindow = null;
+    }
+    if (playerDisplayWindow !== null) {
+      playerDisplayWindow.close();
+      playerDisplayWindow = null;
+    }
     win = null;
     disconnectController();
   })
-    
+  
+
+  win.on('moved', (e) => {
+    saveWindowPosition('main', win);
+  })
+
+  
+  win.on('resized', (e) => {
+    saveWindowPosition('main', win);
+  })
 }
 
 let virtualClient = null;
@@ -78,13 +137,163 @@ function disconnectController() {
   virtualClient = null;
 }
 
+let ignoreMouseEvents = true;
+ipcMain.on('spawn-countdown-window', (event, arg) => {
+  if(countDownWindow) {
+    return;
+  }
+
+  let posParams = {};
+  if (windowPositions.countDown.left !== -1 && windowPositions.countDown.top !== -1) {
+    posParams = {
+      x: windowPositions.countDown.left,
+      y: windowPositions.countDown.top,
+    }
+  }
+
+  countDownWindow = new BrowserWindow({
+    ...posParams,
+    width: windowPositions.countDown.width,
+    height: windowPositions.countDown.height,
+    resizable: false,
+    autoHideMenuBar: true,
+    frame: false,
+    movable: true,
+    transparent: true,
+    titleBarStyle: 'customButtonsOnHover',
+    alwaysOnTop: true,
+    useContentSize: true,
+    webPreferences: {
+      backgroundThrottling: false,
+      minimumFontSize : 12,
+      defaultFontSize : 16,
+      preload: path.join(__dirname, "preload.js") ,
+    }
+  });
+
+  countDownWindow.loadFile('app/countdown.html');
+  countDownWindow.setIgnoreMouseEvents(ignoreMouseEvents);
+
+  countDownWindow.on('moved', (e) => {
+    saveWindowPosition('countDown', countDownWindow);
+  })
+
+  
+  countDownWindow.on('resized', (e) => {
+    saveWindowPosition('countDown', countDownWindow);
+  })
+});
+
+ipcMain.on('update-countdown', (event, arg) => {
+  if(countDownWindow) {
+    countDownWindow.webContents.send('update-countdown', arg);
+  }
+})
+
+ipcMain.on('allow-move-countdown-window', (event, arg) => {
+  ignoreMouseEvents = false;
+  if (countDownWindow) {
+    countDownWindow.setIgnoreMouseEvents(ignoreMouseEvents);
+  }
+});
+
+ipcMain.on('disallow-move-countdown-window', (event, arg) => {
+  ignoreMouseEvents = true;
+  if (countDownWindow) {
+    countDownWindow.setIgnoreMouseEvents(ignoreMouseEvents);
+  }
+});
+
+ipcMain.on('close-countdown-window', (event, arg) => {
+  if (countDownWindow) {
+    countDownWindow.close();
+  }
+
+  countDownWindow = null;
+})
+
+let playerIgnoreMouseEvents = true;
+ipcMain.on('spawn-player-window', (event, arg) => {
+  if(playerDisplayWindow) {
+    return;
+  }
+
+  let posParams = {};
+  if (windowPositions.player.left !== -1 && windowPositions.player.top !== -1) {
+    posParams = {
+      x: windowPositions.player.left,
+      y: windowPositions.player.top,
+    }
+  }
+
+  playerDisplayWindow = new BrowserWindow({
+    ...posParams,
+    width: windowPositions.player.width,
+    height: windowPositions.player.height,
+    resizable: false,
+    autoHideMenuBar: true,
+    frame: false,
+    movable: true,
+    transparent: true,
+    titleBarStyle: 'customButtonsOnHover',
+    alwaysOnTop: true,
+    useContentSize: true,
+    webPreferences: {
+      backgroundThrottling: false,
+      minimumFontSize : 12,
+      defaultFontSize : 16,
+      preload: path.join(__dirname, "preload.js") ,
+    }
+  });
+
+  playerDisplayWindow.loadFile('app/player.html');
+  playerDisplayWindow.setIgnoreMouseEvents(playerIgnoreMouseEvents);
+
+  playerDisplayWindow.on('moved', (e) => {
+    saveWindowPosition('player', playerDisplayWindow);
+  })
+
+  
+  playerDisplayWindow.on('resized', (e) => {
+    saveWindowPosition('player', playerDisplayWindow);
+  })
+});
+
+ipcMain.on('update-player', (event, arg) => {
+  if(playerDisplayWindow) {
+    playerDisplayWindow.webContents.send('update-player', arg);
+  }
+})
+
+ipcMain.on('allow-move-player-window', (event, arg) => {
+  playerIgnoreMouseEvents = false;
+  if (playerDisplayWindow) {
+    playerDisplayWindow.setIgnoreMouseEvents(playerIgnoreMouseEvents);
+  }
+});
+
+ipcMain.on('disallow-move-player-window', (event, arg) => {
+  playerIgnoreMouseEvents = true;
+  if (playerDisplayWindow) {
+    playerDisplayWindow.setIgnoreMouseEvents(playerIgnoreMouseEvents);
+  }
+});
+
+ipcMain.on('close-player-window', (event, arg) => {
+  if (playerDisplayWindow) {
+    playerDisplayWindow.close();
+  }
+
+  playerDisplayWindow = null;
+})
+
 ipcMain.on('get-controll-states', (event, arg) => {
   event.returnValue = controllerStates;
   return;
 })
 
 ipcMain.on('connect-controller', (event, arg) => {
-  console.log('Connecting Virtual Client')
+  console.log('Connecting Virtual Controller')
   // Reuse virtual client across reconnects
   if (virtualClient == null) {
     const client = new ViGEmClient();
@@ -103,7 +312,6 @@ ipcMain.on('connect-controller', (event, arg) => {
     return;
   }
 
-  console.log('Connecting Virtual Controller')
   const controller = virtualClient.createX360Controller();
   // Arbitrary IDs here to hopefully avoid conflicts (worse case in conflict is just duplicate devices)
   const controllerErr = controller.connect({
@@ -131,7 +339,6 @@ ipcMain.handle('timeout', async (event, ...args) => {
 })
 
 ipcMain.on('sync-controller', (event, arg) => {
-  console.log('Updating controller start')
   if (!virtualController) {
     return;
   }
@@ -182,19 +389,6 @@ ipcMain.on('sync-controller', (event, arg) => {
 ipcMain.on('disconnect-controller', (event, arg) => {
   disconnectController();
 })
-
-
-function fixPath(pathToFix, local) {
-  if (!path.isAbsolute(pathToFix)) {
-    if(local) {
-      pathToFix = path.join(appPath, pathToFix);
-    } else {
-      pathToFix = path.join(cwd, pathToFix);
-    }
-  }
-
-  return pathToFix;
-}
 
 ipcMain.on('initialize-settings', (event, arg) => {
   if (fs.existsSync(fixPath('settings.json', false))) {

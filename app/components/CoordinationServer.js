@@ -16,7 +16,34 @@ export class CoordinationServer {
   static users = {};
 
   static addUser(username, userObj) {
-    CoordinationServer.users[username] = userObj;
+    if(!username) return;
+    if (!CoordinationServer.users[username]) {
+      CoordinationServer.users[username] = { username: username};
+    }
+
+    State.setState("users", {...CoordinationServer.users});
+    CoordinationServer.broadcastUsers();
+  }
+
+  static updateUserHasController(username, controllerState) {
+    if(!username) return;
+    if (!CoordinationServer.users[username]) {
+      CoordinationServer.users[username] = { username: username};
+    }
+
+    CoordinationServer.users[username].hasController = !!controllerState;
+
+    State.setState("users", {...CoordinationServer.users});
+    CoordinationServer.broadcastUsers();
+  }
+
+  static updateUserSelected(username, isSelected) {
+    if(!username) return;
+    if (!CoordinationServer.users[username]) {
+      CoordinationServer.users[username] = { username: username};
+    }
+
+    CoordinationServer.users[username].isSelected = isSelected;
 
     State.setState("users", {...CoordinationServer.users});
     CoordinationServer.broadcastUsers();
@@ -44,7 +71,7 @@ export class CoordinationServer {
       const myUsername = Settings.getSetting('username');
 
       if(player == myUsername) {
-        // Need Countdown Outside of Bizhawk
+        Actions.startCountdown();
       } else {
         let connection = null;
         for(let id in CoordinationServer.connections) {
@@ -89,13 +116,13 @@ export class CoordinationServer {
             break;
           case 'update_controller_state':
             Runner.updateControllerState(message.username, message.state);
-            Actions.updateUserLatency(message.username, Date.now() - message.timestamp);
             break;
         }
       })
 
       ws.on('close', (closed) => {
         if (CoordinationServer.connections[id].username) {
+          Runner.updateControllerState(CoordinationServer.connections[id].username, null);
           CoordinationServer.removeUser(CoordinationServer.connections[id].username);
         }
 
@@ -112,3 +139,5 @@ export class CoordinationServer {
     });
   }
 }
+
+window.CoordinationServer = CoordinationServer;

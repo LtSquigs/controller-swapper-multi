@@ -37,17 +37,20 @@ class App extends Component {
       isHost=${this.state.isHost}
       isRunning=${this.state.isRunning}
       mode=${this.state.mode}
-      currentPlayer=${this.state.currentPlayer}
       controllerMapping=${this.state.controllerMapping}
       connectedControllers=${this.state.connectedControllers}
+      countDown=${this.state.swapCountdown}
       enableCountdown=${this.state.enableCountdown}
+      countdownDisplay=${this.state.countdownDisplay}
       forwardedController=${this.state.forwardedController}
       minSwapTime=${this.state.minSwapTime}
       maxSwapTime=${this.state.maxSwapTime}
+      moveCountdownWindow=${this.state.moveCountdownWindow}
+      playerDisplay=${this.state.playerDisplay}
+      movePlayerWindow=${this.state.movePlayerWindow}
       users=${this.state.users}
-      userControllerStates=${this.state.userControllerStates}
-      userLatency=${this.state.userLatency}
       settingsPage=${this.state.settingsPage}
+      virtualController=${this.state.virtualController}
     />`;
   }
 }

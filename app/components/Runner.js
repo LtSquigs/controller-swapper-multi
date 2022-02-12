@@ -1,7 +1,5 @@
 import { State } from './State.js';
-import { Settings } from './Settings.js';
 import { Actions } from './Actions.js';
-import { WebsocketClient } from './WebsocketClient.js';
 import { CoordinationServer } from './CoordinationServer.js'
 
 const ipcRenderer = window.ipcRenderer;
@@ -35,7 +33,7 @@ export class Runner {
   static stop() {
     Actions.updateIsRunning(false);
     Runner.clearTimeout();
-    Runner.currentPlayer = null;
+    Runner.updateCurrentPlayer(null);
   }
   static clearTimeout() {
     if(Runner.currentTimer) {
@@ -67,24 +65,24 @@ export class Runner {
 
     // Pick New Player To Swap To
     let playerList = [];
+    let filteredPlayerList = [];
     for(const username in Runner.userControllerStates) {
       if (Runner.userControllerStates[username]) playerList.push(username);
     }
 
-    playerList = playerList.filter((username) => username != Runner.currentPlayer);
+    filteredPlayerList = playerList.filter((username) => username != Runner.currentPlayer);
 
     // No valid players to shuffle to, just retry later
-    if (playerList.length == 0) {
+    if (filteredPlayerList.length == 0) {
       Runner.registerNextShuffle();
       return;
     }
 
-    const newPlayer = playerList[Math.floor(Math.random()*playerList.length)];
-
+    const newPlayer = filteredPlayerList[Math.floor(Math.random()*filteredPlayerList.length)];
 
     if (State.getState("enableCountdown") && !noCountdown) {
       // Maybe Replace this with a single countdown to the targeted player?
-      const countdownPromises = Object.keys(newMap).map((player) => {
+      const countdownPromises = playerList.map((player) => {
         return CoordinationServer.sendCountdown(player);
       });
 
@@ -102,7 +100,9 @@ export class Runner {
     State.setState('isSwapping', true);
     // From the controller state list, pick a random use who has a controller state as the new player
 
+    CoordinationServer.updateUserSelected(Runner.currentPlayer, false);
     Runner.currentPlayer = newPlayer;
+    CoordinationServer.updateUserSelected(newPlayer, true);
     State.setState('currentPlayer', newPlayer);
     
     State.setState('isSwapping', false);
@@ -111,35 +111,35 @@ export class Runner {
   // In All For One Mode, any One person pressing a button presses it, and all analog values are just added together!
   static allForOne() {
     const totalState = {}
-    for(let key in buttonKeys) {
+    for(let key of buttonKeys) {
       totalState[key] = 0;
     }
-    for(let key in axisKeys) {
+    for(let key of axisKeys) {
       totalState[key] = 0;
     }
 
     for(let user in Runner.userControllerStates) {
       if (Runner.userControllerStates[user] !== null) {
         // If any one person is pressing a button, it is pressed
-        for(let key in buttonKeys) {
+        for(let key of buttonKeys) {
           const val = Runner.userControllerStates[user][key] || 0;
           if (val > 0) {
             totalState[key] = 1;
           }
         }
         
-        for(let key in axisKeys) {
+        for(let key of axisKeys) {
           const val = Runner.userControllerStates[user][key] || 0;
-          if (val > 0.07) { // For non Neutral Axis, we are going to average these, we only count past a deadzone though
+          if (Math.abs(val) > 0.07) { // For non Neutral Axis, we are going to average these, we only count past a deadzone though
             totalState[key] += val;
           }
         }
       }
     }
 
-    for(let key in axisKeys) {
-      totalState[key] = Math.max(1, totalState[key]);
-      totalState[key] = Math.min(-1, totalState[key]);
+    for(let key of axisKeys) {
+      totalState[key] = totalState[key] > 1 ? 1 : totalState[key];
+      totalState[key] = totalState[key] < -1 ? -1 : totalState[key];
     }
 
     return totalState;
@@ -148,16 +148,23 @@ export class Runner {
   static updateControllerState(username, state) {
     Runner.userControllerStates[username] = state;
     State.setState("userControllerStates", Runner.userControllerStates);
+    CoordinationServer.updateUserHasController(username, state);
 
     // If we arent running, don't go syncing waterfalls
     if(!State.getState("isRunning")) {
+      // If its not running but you are the host, then forward the controller
+      if (username == State.getState("username")) {
+        ipcRenderer.send('sync-controller', state)
+      }
       return;
     }
 
     if (State.getState("mode") === "random" && username === Runner.currentPlayer) {
-      ipcRenderer.send('sync-controller', state)
+      ipcRenderer.send('sync-controller', state);
     } else if (State.getState("mode") === "all") {
       ipcRenderer.send('sync-controller', Runner.allForOne());
+    } else if (State.getState("mode") === "manual" && username === Runner.currentPlayer) {
+      ipcRenderer.send('sync-controller', state);
     }
   }
   
